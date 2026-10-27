@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Contact Manager Backend (vilas practice)
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+    Runtime: nodejs20.x
+    Tags:
+      project: contact-manager-vilas
+
+Resources:
+  ContactsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: contacts-table-vilas
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      Tags:
+        - Key: project
+          Value: contact-manager-vilas
+
+  ContactsHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: contacts-api-vilas
+      Tags:
+        project: contact-manager-vilas
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        MaxAge: 300
+
+  ContactsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: contacts-function-vilas
+      CodeUri: Backend/
+      Handler: index.handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ContactsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ContactsTable
+      Events:
+        ContactsRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ContactsHttpApi
+            Path: /contacts
+            Method: ANY
+        ContactsProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ContactsHttpApi
+            Path: /contacts/{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: "Use this for VITE_API_URL"
+    Value: !Sub "https://${ContactsHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  ContactsTableName:
+    Value: !Ref ContactsTable
